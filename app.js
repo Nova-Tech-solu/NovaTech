@@ -1,6 +1,6 @@
 // ─── CONFIG ───────────────────────────────────────────────
 // Change this to your deployed Render/Railway backend URL
-const API_BASE = "https://your-api.onrender.com";
+const API_BASE = "https://attendance-api-blyk.onrender.com";
 
 // ─── AUTH GUARD ───────────────────────────────────────────
 function requireAuth() {
