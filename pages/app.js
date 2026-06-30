@@ -4,6 +4,7 @@ const API_BASE = "https://attendance-api-blyk.onrender.com";
 
 // ─── AUTH GUARD ───────────────────────────────────────────
 function requireAuth() {
+  alert("DEBUG das_auth value: [" + sessionStorage.getItem("das_auth") + "]");
   if (sessionStorage.getItem("das_auth") !== "1") {
     window.location.href = "../index.html";
   }
