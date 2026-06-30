@@ -80,7 +80,8 @@
     const OFFICE = params.get("office") || "";
     let activeTab = "daily";
     let officeData = null;
-
+    
+    alert("DEBUG OFFICE value: [" + OFFICE + "]");
     if (!OFFICE) window.location.href = "home.html";
 
     // ── Load sidebar offices ──────────────────────────
