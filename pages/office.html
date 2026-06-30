@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>All Offices — Attendance Dashboard</title>
+  <title>Office — Attendance Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="shared.css"/>
@@ -21,16 +21,12 @@
     </div>
 
     <nav class="sidebar-nav">
-      <a class="nav-link active" data-page="home" href="home.html">
+      <a class="nav-link" data-page="home" href="home.html">
         <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
         All Offices
       </a>
       <div class="nav-section-label">Offices</div>
-      <div id="sidebarOffices" class="sidebar-offices">
-        <div class="skeleton-line"></div>
-        <div class="skeleton-line"></div>
-        <div class="skeleton-line"></div>
-      </div>
+      <div id="sidebarOffices" class="sidebar-offices"></div>
     </nav>
 
     <div class="sidebar-footer">
@@ -45,70 +41,125 @@
   <main class="main">
     <header class="page-header">
       <div>
-        <h1 class="page-title">Office Overview</h1>
-        <p class="page-sub">Select an office to view its attendance records.</p>
+        <a href="home.html" class="back-link">← All Offices</a>
+        <h1 class="page-title" id="officeTitle">Loading…</h1>
+        <p class="page-sub" id="officeMeta"></p>
       </div>
-      <button class="refresh-btn" onclick="loadOffices()">
+      <button class="refresh-btn" onclick="loadData()">
         <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
         Refresh
       </button>
     </header>
 
-    <div id="officeGrid" class="office-grid">
-      <!-- populated by JS -->
+    <!-- TAB BAR -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="daily"   onclick="switchTab('daily')">Daily Summary</button>
+      <button class="tab-btn"        data-tab="totals"  onclick="switchTab('totals')">Staff Totals</button>
+      <button class="tab-btn"        data-tab="months"  onclick="switchTab('months')">Monthly Breakdown</button>
+      <button class="tab-btn"        data-tab="monthly" onclick="switchTab('monthly')">Monthly Totals</button>
     </div>
+
+    <!-- SEARCH BAR -->
+    <div class="table-toolbar">
+      <input type="search" id="tableSearch" placeholder="Search in table…" oninput="filterTable(this.value)" />
+      <span id="rowCount" class="row-count"></span>
+    </div>
+
+    <!-- TABLE PANELS -->
+    <div id="panel-daily"   class="tab-panel active"><div class="loading-wrap"><div class="spinner"></div></div></div>
+    <div id="panel-totals"  class="tab-panel"></div>
+    <div id="panel-months"  class="tab-panel"></div>
+    <div id="panel-monthly" class="tab-panel"></div>
   </main>
 
   <script src="app.js"></script>
   <script>
     requireAuth();
 
-    async function loadOffices() {
-      const grid = document.getElementById("officeGrid");
-      const sidebar = document.getElementById("sidebarOffices");
-      grid.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><p>Loading offices…</p></div>`;
+    const params = new URLSearchParams(window.location.search);
+    const OFFICE = params.get("office") || "";
+    let activeTab = "daily";
+    let officeData = null;
 
+    if (!OFFICE) window.location.href = "home.html";
+
+    // ── Load sidebar offices ──────────────────────────
+    async function loadSidebar() {
       try {
         const offices = await apiFetch("/offices");
-
-        if (!offices.length) {
-          grid.innerHTML = `<p class="empty-state">No offices registered yet. Contact the system administrator.</p>`;
-          return;
-        }
-
-        // Sidebar links
-        sidebar.innerHTML = offices.map(o => `
-          <a class="nav-link" data-page="${o.slug}" href="office.html?office=${o.slug}">
+        const el = document.getElementById("sidebarOffices");
+        el.innerHTML = offices.map(o => `
+          <a class="nav-link ${o.slug === OFFICE ? "active" : ""}" href="office.html?office=${o.slug}">
             <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
             ${o.name}
           </a>
         `).join("");
+      } catch {}
+    }
 
-        // Cards
-        grid.innerHTML = offices.map(o => `
-          <a class="office-card ${o.has_data ? "" : "no-data"}" href="office.html?office=${o.slug}">
-            <div class="office-card-icon">
-              <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
-            </div>
-            <div class="office-card-body">
-              <h2>${o.name}</h2>
-              <p class="office-meta">
-                ${o.has_data
-                  ? `<span class="badge badge-active">Data available</span> Last updated: ${fmtDate(o.last_updated)}`
-                  : `<span class="badge badge-empty">Awaiting upload</span>`
-                }
-              </p>
-            </div>
-            <svg class="office-arrow" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
-          </a>
-        `).join("");
+    // ── Load office data ──────────────────────────────
+    async function loadData() {
+      document.getElementById("officeTitle").textContent = OFFICE.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      document.getElementById("officeMeta").textContent = "Loading…";
+      ["daily","totals","months","monthly"].forEach(t => {
+        document.getElementById(`panel-${t}`).innerHTML = `<div class="loading-wrap"><div class="spinner"></div></div>`;
+      });
 
+      try {
+        officeData = await apiFetch(`/offices/${OFFICE}`);
+        document.getElementById("officeTitle").textContent = officeData.name;
+        document.getElementById("officeMeta").textContent = `Last updated: ${fmtDate(officeData.last_updated)}`;
+
+        renderTab("daily",   officeData.cleaned_daily);
+        renderTab("totals",  officeData.cleaned_totals);
+        renderTab("months",  officeData.cleaned_months);
+        renderTab("monthly", officeData.cleaned_monthly);
+
+        updateRowCount();
       } catch (e) {
-        grid.innerHTML = `<p class="empty-state error-text">Failed to load offices: ${e.message}</p>`;
+        document.getElementById("officeTitle").textContent = OFFICE.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        document.getElementById("panel-daily").innerHTML = `<p class="empty-state error-text">Could not load data: ${e.message}</p>`;
       }
     }
 
-    loadOffices();
+    function renderTab(name, data) {
+      document.getElementById(`panel-${name}`).innerHTML = dfToTable(data, `tbl-${name}`);
+    }
+
+    // ── Tab switching ─────────────────────────────────
+    function switchTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === `panel-${tab}`));
+      document.getElementById("tableSearch").value = "";
+      filterTable("");
+      updateRowCount();
+    }
+
+    // ── Table search / filter ─────────────────────────
+    function filterTable(query) {
+      const tbl = document.getElementById(`tbl-${activeTab}`);
+      if (!tbl) return;
+      const q = query.toLowerCase();
+      let visible = 0;
+      tbl.querySelectorAll("tbody tr").forEach(row => {
+        const match = row.textContent.toLowerCase().includes(q);
+        row.style.display = match ? "" : "none";
+        if (match) visible++;
+      });
+      document.getElementById("rowCount").textContent = query ? `${visible} result${visible !== 1 ? "s" : ""}` : "";
+    }
+
+    function updateRowCount() {
+      const tbl = document.getElementById(`tbl-${activeTab}`);
+      if (!tbl) return;
+      const total = tbl.querySelectorAll("tbody tr").length;
+      document.getElementById("rowCount").textContent = `${total} row${total !== 1 ? "s" : ""}`;
+    }
+
+    // ── Boot ──────────────────────────────────────────
+    loadSidebar();
+    loadData();
   </script>
 </body>
 </html>
